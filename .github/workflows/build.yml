@@ -14,14 +14,24 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
-      - run: |
-          unzip -q NexusPro.zip -d src
+      - name: Unzip project
+        run: unzip -q NexusPro.zip -d src
+      - name: Build APK
+        run: |
           cd src/NexusPro
-          gradle assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+      - name: Show Kotlin errors
+        if: failure()
+        run: grep -E "^e: |error:" src/NexusPro/build.log || true
       - uses: actions/upload-artifact@v4
         with:
-          name: NexusPro-apk
+          name: NexusPro-debug-apk
           path: src/NexusPro/app/build/outputs/apk/debug/app-debug.apk
-      - env:
+      - name: Create Release
+        env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v${{ github.run_number }}" src/NexusPro/app/build/outputs/apk/debug/app-debug.apk --title "NexusPro ${{ github.run_number }}" --notes "APK debug"
+        run: |
+          gh release create "v${{ github.run_number }}" \
+            src/NexusPro/app/build/outputs/apk/debug/app-debug.apk \
+            --title "NexusPro v${{ github.run_number }}" \
+            --notes "Build otomatis - NexusPro Game Booster"
