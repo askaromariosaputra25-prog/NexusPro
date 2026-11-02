@@ -19,6 +19,8 @@ jobs:
       - name: Unzip project
         run: unzip -q NexusPro.zip -d src
       - name: Build APK
+        env:
+          WEB_CLIENT_ID: ${{ secrets.WEB_CLIENT_ID }}
         run: |
           cd src/NexusPro
           gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
