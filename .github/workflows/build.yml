@@ -33,7 +33,7 @@ jobs:
 
       - name: Build APK
         run: |
-          cd Nexus
+          cd NexusPro
           gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
