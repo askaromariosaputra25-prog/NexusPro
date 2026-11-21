@@ -33,8 +33,18 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.5'
           channel: stable
           cache: true
+
+      # Samakan versi Gradle/Kotlin dengan Flutter 3.24.5 (versi asli project ini)
+      - name: Pin Gradle versions
+        working-directory: ${{ env.PROJECT_DIR }}/android
+        run: |
+          sed -i 's/version "8.9.1"/version "8.1.0"/g; s/version "2.1.0" apply false/version "1.9.0" apply false/' settings.gradle
+          sed -i 's#gradle-8.11.1-all.zip#gradle-8.3-all.zip#' gradle/wrapper/gradle-wrapper.properties
+          grep -n "version" settings.gradle
+          cat gradle/wrapper/gradle-wrapper.properties
 
       - name: Ensure asset folders
         working-directory: ${{ env.PROJECT_DIR }}
