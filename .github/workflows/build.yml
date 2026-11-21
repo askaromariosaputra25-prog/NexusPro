@@ -2,8 +2,6 @@ name: Build NexusPro APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: write
@@ -13,6 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Cari file .zip di halaman utama repo, extract, lalu cari folder yang berisi pubspec.yaml
+      - name: Extract project from zip
+        run: |
+          ZIP=$(ls *.zip 2>/dev/null | head -n 1)
+          if [ -z "$ZIP" ]; then echo "Tidak ada file .zip di halaman utama repo"; exit 1; fi
+          echo "Memakai: $ZIP"
+          mkdir -p project
+          unzip -q "$ZIP" -d project
+          PUB=$(find project -maxdepth 3 -name pubspec.yaml | head -n 1)
+          if [ -z "$PUB" ]; then echo "pubspec.yaml tidak ditemukan di dalam zip"; exit 1; fi
+          DIR=$(dirname "$PUB")
+          echo "Project ada di: $DIR"
+          echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         with:
@@ -25,9 +37,11 @@ jobs:
           cache: true
 
       - name: Ensure asset folders
+        working-directory: ${{ env.PROJECT_DIR }}
         run: mkdir -p assets/icons assets/images
 
       - name: Setup signing (optional)
+        working-directory: ${{ env.PROJECT_DIR }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -44,24 +58,27 @@ jobs:
             } > android/key.properties
           fi
 
-      - run: flutter pub get
+      - name: Pub get
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: flutter pub get
 
       - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
         run: flutter build apk --release --split-per-abi
 
       - name: Rename APK
+        working-directory: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk
         run: |
-          cd build/app/outputs/flutter-apk
           for f in app-*-release.apk; do mv "$f" "NexusPro-1.7.0-${f#app-}"; done
 
       - uses: actions/upload-artifact@v4
         with:
           name: NexusPro-APK
-          path: build/app/outputs/flutter-apk/NexusPro-*.apk
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/NexusPro-*.apk
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: NexusPro build ${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/NexusPro-*.apk
+          files: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/NexusPro-*.apk
